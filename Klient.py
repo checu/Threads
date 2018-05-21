@@ -4,12 +4,16 @@ import shutil
 import threading
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-# from Server import numberOfFilesforUser
+import queue
 import Server
 
 localFolder= "C:\\Users\\A672724\\Desktop\\PWspółbieżne\\Clients"
 
 def Client(username,localFolder):
+
+    #ustawianie kolejki
+    userQueue=[]
+
 
     clientFolder = localFolder+"\\"+username
 
@@ -26,14 +30,35 @@ def Client(username,localFolder):
 
         filesNumberS = Server.numberOfFilesforUser(username)[0]
 
+
         if filesNumber > filesNumberS:
             #             send to server
+            itemsSet=set(os.listdir(clientFolder))-set(Server.numberOfFilesforUser(username)[1])
+            userQueue=list(itemsSet)
+            appendQueue(userQueue)
             print("send")
         elif filesNumber < filesNumberS:
             #             load form server
+            itemsSet = set(set(Server.numberOfFilesforUser(username)[1]-os.listdir(clientFolder)))
+            userQueue = list(itemsSet)
+            appendQueue(userQueue)
             print("load")
 
+
     # UploadOrLoad()
+    print(os.listdir(clientFolder))
+    print(Server.numberOfFilesforUser(username)[1])
+
+    UploadOrLoad()
+
+#dodawanie plikow do kolejki
+def appendQueue(itemsQueue):
+
+    Server.queueLock.acquire()
+    for file in itemsQueue:
+        Server.workQueue.put(file)
+    Server.queueLock.release()
+    print(Server.workQueue)
 
  #     klasa do sprawdzania updatu pliku w folderze lokalnym uzytkownika
 
@@ -75,5 +100,4 @@ def Client(username,localFolder):
 
 
 Client("Marianna",localFolder)
-
-
+Server.threadsCall()
