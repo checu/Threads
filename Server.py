@@ -3,12 +3,15 @@ import time
 import shutil
 import threading
 import queue
+from random import randint
 
 
-serverFolder= "C:\\Users\\A672724\\Desktop\\PWspółbieżne\\Server"
+serverFolder = "C:\\Users\\A672724\\Desktop\\PWspółbieżne\\Server"
+disks={}
 exitFlag = 0
 queueLock = threading.Lock()
 workQueue = queue.Queue(0)
+FlagLoad=False
 
 # tworzenie dysków na sererze
 def Server(disksNumber, serverFolder):
@@ -22,6 +25,7 @@ def Server(disksNumber, serverFolder):
 
         open(disk+"\\config.txt","w+").close() #ma być plik csv
 
+
 # zliczanie ilosci plikow dla danego uzytkownika na serverze
 def numberOfFilesforUser(userName):
 
@@ -29,6 +33,7 @@ def numberOfFilesforUser(userName):
     diskNum=len(itemList)
     filesNumber=0
     filesList=[]
+    pathList=[]
     for i in itemList:
 
         diskPath=serverFolder+"\\"+i+"\\"+userName
@@ -36,51 +41,116 @@ def numberOfFilesforUser(userName):
         if os.path.exists(diskPath):
             filesNumber+=len(os.listdir(diskPath))
             filesList+=os.listdir(diskPath)
-# Server(5,serverFolder)
-    return filesNumber, filesList
 
-def Upload(item):
+            for file in os.listdir(diskPath):
+                pathList.append(diskPath+"\\"+file)
+
+    return filesNumber, filesList, pathList
 
 
+# kontoler zapewnia rownomierne rozmieszczenie plikow w dyskach
+def Controler():
+    if not disks:
+        disckList=os.listdir(serverFolder)
+        values=[0]*len(disckList)
+
+        for d in range(len(disckList)):
+            disks[disckList[d]] = values[d]
+
+        dysk=min(disks, key=disks.get)
+        disks[dysk]+=1
+
+    else:
+        dysk=dysk=min(disks, key=disks.get)
+        disks[dysk] += 1
+
+    return dysk
+
+def UpdateLogg(disk,item,type,user):
+
+    # logg message
+    curTime=time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+    conf = open(serverFolder + "\\" + disk + "\\config.txt", "a")
+    conf.write(str(curTime + "      "+user+"      "+type+"      " + item + '\n'))
+    conf.close()
+
+def Upload(item,user):
+
+    disk = Controler()
+
+    source = "C:\\Users\\A672724\\Desktop\\PWspółbieżne\\Clients\\"+user+"\\" + item
+    dest = serverFolder + "\\" + disk + "\\"+user
+
+    if not os.path.exists(dest):
+        os.mkdir(dest)
+
+    shutil.copy(source, dest)
+
+    UpdateLogg(disk,item,"Upload",user)
+
+
+def Load(item,user):
+
+    fileList=numberOfFilesforUser(user)[2]
+
+    for file in fileList:
+        doc= file.rpartition('\\')[-1]
+        if item == doc:
+            disk= file[44:50]
+            source = file
+            dest = "C:\\Users\\A672724\\Desktop\\PWspółbieżne\\Clients""\\"+user
+
+            if not os.path.exists(dest):
+                os.mkdir(dest)
+
+            shutil.copy(source, dest)
+
+            UpdateLogg(disk, item, "Load", user)
 
 
 # tworzenie wątków
 
 class myThread(threading.Thread):
-    def __init__(self, threadID, name, q):
+    def __init__(self, threadID, name, q,user):
             threading.Thread.__init__(self)
             self.threadID = threadID
             self.name = name
             self.q = q
+            self.user = user
 
     def run(self):
             print("Starting " + self.name)
-            itemProcessing(self.name, self.q)
+            itemProcessing(self.name, self.q,self.user)
             print("Exiting " + self.name)
 
-def itemProcessing(threadName, q):
+def itemProcessing(threadName, q, userName):
         while not exitFlag:
-            queueLock.acquire()
+            # queueLock.acquire()
             if not workQueue.empty():
                 item = q.get()
-                queueLock.release()
+                time.sleep(randint(1, 15))
+                if FlagLoad:
+                    Load(item,userName)
+                else:
+                    Upload(item, userName)
                 print("%s processing %s" % (threadName, item))
+                # queueLock.release()
             else:
-                queueLock.release()
+                # queueLock.release()
                 print("kolejka pusta")
                 return
             time.sleep(1)
 
-def threadsCall():
+def threadsCall(userName):
 
-    threadList = ["watek"+str(i) for i in range(1,int((workQueue.qsize()+1)/2))]
+    threadList = ["watek"+str(i) for i in range(1,int((workQueue.qsize()+2)/2))]
     threads = []
     threadID = 1
     exitFlag = 0
 
     # tworzenie watków
     for threadName in threadList:
-        thread = myThread(threadID, threadName, workQueue)
+        thread = myThread(threadID, threadName, workQueue,userName)
         thread.start()
         threads.append(thread)
         threadID += 1
@@ -97,3 +167,4 @@ def threadsCall():
 
 # threadsCall()
 # print(numberOfFilesforUser("Marianna"))
+# Controler()

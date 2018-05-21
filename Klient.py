@@ -7,11 +7,14 @@ from watchdog.events import FileSystemEventHandler
 import queue
 import Server
 
+
 localFolder= "C:\\Users\\A672724\\Desktop\\PWspółbieżne\\Clients"
 
 def Client(username,localFolder):
 
     #ustawianie kolejki
+    loadUserQueue=[]
+    uploadUserQueue=[]
     userQueue=[]
 
 
@@ -36,19 +39,22 @@ def Client(username,localFolder):
             itemsSet=set(os.listdir(clientFolder))-set(Server.numberOfFilesforUser(username)[1])
             userQueue=list(itemsSet)
             appendQueue(userQueue)
+            Server.threadsCall(username)
             print("send")
         elif filesNumber < filesNumberS:
             #             load form server
-            itemsSet = set(set(Server.numberOfFilesforUser(username)[1]-os.listdir(clientFolder)))
+            itemsSet = set(Server.numberOfFilesforUser(username)[1])-set(os.listdir(clientFolder))
             userQueue = list(itemsSet)
             appendQueue(userQueue)
+            Server.FlagLoad=True
+            Server.threadsCall(username)
             print("load")
 
 
     # UploadOrLoad()
     print(os.listdir(clientFolder))
     print(Server.numberOfFilesforUser(username)[1])
-
+    print(Server.numberOfFilesforUser(username)[2])
     UploadOrLoad()
 
 #dodawanie plikow do kolejki
@@ -100,4 +106,6 @@ def appendQueue(itemsQueue):
 
 
 Client("Marianna",localFolder)
-Server.threadsCall()
+
+
+
