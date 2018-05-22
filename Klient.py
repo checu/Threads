@@ -6,7 +6,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import queue
 import Server
-
+import sys
 
 localFolder= "C:\\Users\\A672724\\Desktop\\PWspółbieżne\\Clients"
 
@@ -16,6 +16,7 @@ def Client(username,localFolder):
     loadUserQueue=[]
     uploadUserQueue=[]
     userQueue=[]
+    workQueue=queue.Queue(0)
 
 
     clientFolder = localFolder+"\\"+username
@@ -38,18 +39,17 @@ def Client(username,localFolder):
             #             send to server
             itemsSet=set(os.listdir(clientFolder))-set(Server.numberOfFilesforUser(username)[1])
             userQueue=list(itemsSet)
-            appendQueue(userQueue)
-            Server.threadsCall(username)
+            appendQueue(userQueue,workQueue)
+            Server.threadsCall(username,workQueue)
             print("send")
         elif filesNumber < filesNumberS:
             #             load form server
             itemsSet = set(Server.numberOfFilesforUser(username)[1])-set(os.listdir(clientFolder))
             userQueue = list(itemsSet)
-            appendQueue(userQueue)
+            appendQueue(userQueue,workQueue)
             Server.FlagLoad=True
-            Server.threadsCall(username)
+            Server.threadsCall(username,workQueue)
             print("load")
-
 
     # UploadOrLoad()
     print(os.listdir(clientFolder))
@@ -58,13 +58,13 @@ def Client(username,localFolder):
     UploadOrLoad()
 
 #dodawanie plikow do kolejki
-def appendQueue(itemsQueue):
+def appendQueue(itemsQueue,workQueue):
 
-    Server.queueLock.acquire()
+    # Server.queueLock.acquire()
     for file in itemsQueue:
-        Server.workQueue.put(file)
-    Server.queueLock.release()
-    print(Server.workQueue)
+        workQueue.put(file)
+    # Server.queueLock.release()
+    print(workQueue)
 
  #     klasa do sprawdzania updatu pliku w folderze lokalnym uzytkownika
 
@@ -105,7 +105,7 @@ def appendQueue(itemsQueue):
             w.run()
 
 
-Client("Marianna",localFolder)
-
+Client(sys.argv[1],localFolder)
+# Client("Tomasz",localFolder)
 
 

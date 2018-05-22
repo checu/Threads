@@ -9,8 +9,8 @@ from random import randint
 serverFolder = "C:\\Users\\A672724\\Desktop\\PWspółbieżne\\Server"
 disks={}
 exitFlag = 0
-queueLock = threading.Lock()
-workQueue = queue.Queue(0)
+# queueLock = threading.Lock()
+# workQueue = queue.Queue(0)
 FlagLoad=False
 
 # tworzenie dysków na sererze
@@ -126,7 +126,7 @@ class myThread(threading.Thread):
 def itemProcessing(threadName, q, userName):
         while not exitFlag:
             # queueLock.acquire()
-            if not workQueue.empty():
+            if not q.empty():
                 item = q.get()
                 time.sleep(randint(1, 15))
                 if FlagLoad:
@@ -141,9 +141,13 @@ def itemProcessing(threadName, q, userName):
                 return
             time.sleep(1)
 
-def threadsCall(userName):
+def threadsCall(userName,workQueue):
 
-    threadList = ["watek"+str(i) for i in range(1,int((workQueue.qsize()+2)/2))]
+    if(workQueue.qsize()>1):
+        threadList = ["watek"+str(i) for i in range(1,int((workQueue.qsize()+2)/2))]
+    else:
+        threadList = ["watek1"]
+
     threads = []
     threadID = 1
     exitFlag = 0
